@@ -11,6 +11,7 @@
 #include<iterator>
 #include<streambuf>
 
+
 class CPP_XML
 {
   private:
@@ -175,6 +176,147 @@ class CPP_XML
 
       }
     }
+
+    //Public function
+  public:
+    bool XMLDocLoad(XMLDocument* doc, const std::string& path)
+    {
+      std::ifstream file (path);
+      if(!file.is_ooen()){
+        std::cerr << "Could not load file from " << path << std::endl;
+        return false;
+      }
+      std::string buf;
+
+      //reserve the memory in the string for the size of the file
+      file.seekg(0, std::ios::end);
+      buf.reserve(file.tellg());
+      file.seekg(0, std::ios::beg);
+
+      //insert the entire content of the file into the string
+      buf.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+      //close file
+      file.close();
+
+      //lexical buffer, lexical index, buffer index
+      std::srring lex;
+      decltype(lex.size()) lexi = 0;
+      decltype(buf.size()) index = 0;
+
+      //now we parse the file
+      XMLNode* curr_node = doc->root;
+
+      while(buf[index] != buf.size()){
+        if(buf[index] == '<'){
+          //lex[lexi] = '\0';
+
+          //inner text
+          if(lexi > 0){
+            if(!curr_node){
+              std::cerr << "Text outside of document" << std::endl;
+              return false;
+            }
+            curr_node->inner_text = lex;
+            lexi = 0;
+          }
+
+          //end of node
+          if(buf[index + 1] == '/'){
+            index += 2;
+            while(buf[index] != '>'){
+              lex += buf[index ++];
+              ++lexi;
+            }
+
+            if(!curr_node){
+              std::cerr << "Already at root node" << std::endl;
+              return false;
+            }
+
+            if(curr_node->tag.compare(lex) != 0){
+              std::cerr << "Mismatched tags (" << curr_node->tag << "!=" << lex << ")" << std::endl;
+              return false;
+            }
+            curr_node = curr_node->parent;
+            ++index;
+            continue;
+          }
+
+          //special node
+          if(buf[index + 1] =='!'){
+            while(buf[index] != ' ' && buf[index] != '>'){
+              lex += buf[index++];
+              ++lexi;
+            }
+
+            //commemts
+            if(lex.compare("<!--") == 0){
+              //pre c++20 compiler therefore i must 
+              //implement my own ends_wth function
+              const auto ends_wth = [](const std::string& str, const std::string& suffix){
+                return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix);
+              }
+              while(!ends_wth(lex, "-->")){
+              lex += buf[index++];
+              ++lexi;
+            }
+            continue;
+          }
+        }
+
+        //declaration tag
+        if(buf[index +1] == '?'){
+          while(buf[index] != ' ' && buf[index] != '>'){
+            lex += buf[index++];
+            ++lexi;
+          }
+          //lex[lexi] = '\0'
+          
+
+          //this is the XML declaration
+          if(lex.compare("<?xml") == 0){
+            lexi = 0;
+            lex.clear();
+
+            XMLNode* desc->newNode();
+
+            parseAttrs(buf, &index, lex, &lexi, desc);
+
+            doc->version = XMLNodeAttrVal(desc, "version");
+            doc->encoding = XMLNodeAttrVal(desc, "encoding");
+            continue;
+          }
+        }
+
+        //set the current node
+        curr_node->newNode(curr_node);
+
+        //start tag
+        ++index;
+        if(parseAttrs(buf, &index, lex, &lexi, curr_node) == TAG_INLINE){
+          curr_node = curr_node->parent;
+          ++index;
+          continue;
+        }
+
+        //set tag name if none
+        if(!curr_node->tag)
+          curr_node->tag = lex;
+
+        //reset lexer
+        lexi = 0;
+        lex.clear();
+        ++index;
+        continue;
+      }else{
+        lex += buf[index++];
+        ++lexi;
+      }
+    }
+    return true;
+    }
+
    
    
 };
