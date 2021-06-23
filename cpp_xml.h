@@ -4,8 +4,6 @@
 #include<vector>
 #include<iostream>
 #include<string>
-#include<sstring>
-#include<sstring>
 #include<fstream>
 #include<algorithm>
 #include<iterator>
@@ -14,16 +12,16 @@
 struct XMLNode;
 
 
-struct XMLDocument
-{
-  XMLNode* root;
-  std::string version;
-  std::string encoding;
-};
+
 
 
 class CPP_XML
 {
+
+
+
+
+
   private:
 
 
@@ -33,6 +31,7 @@ class CPP_XML
       std::string value;
     };
 
+
     struct XMLNode
     {
       std::string tag;
@@ -40,20 +39,20 @@ class CPP_XML
       XMLNode* parent;
       std::vector<XMLAttribute> attributes;
       std::vector<XMLNode*> children;
+      XMLNode() = default;
+      XMLNode(XMLNode& a_parent): parent(&a_parent)
+              {
+                parent->children.push_back(this);
+              }
+
     };
-
-    //member variables
-    private:
-    XMLDocument m_doc;
-    
-
-
 
 
   private:
-  constexpr  std::vector<XMLNode*> XMLNodeChildren (XMLNode* parent, const std::string & tag)
+
+    std::vector<XMLNode*> XMLNodeChildren (XMLNode* parent, const std::string & tag)
     {
-      std::vector<XMLNode*> list:
+      std::vector<XMLNode*> list;
 
       for(decltype(parent->children.size()) index =0; index < parent->children.size(); ++index){
         XMLNode* child = parent->children[index];
@@ -78,7 +77,7 @@ class CPP_XML
     {
 
        for(decltype(node->attributes.size()) index =0; index < node->attributes.size(); ++index){
-        XMLAttribute* attr  = node->attributes[index];
+        XMLAttribute* attr  = &(node->attributes[index]);
         if(attr->key.compare(key)==0)
           return attr;
       }
@@ -91,7 +90,7 @@ class CPP_XML
       TAG_INLINE
     };
 
-   constexpr TagType parseAttrs(std::string& buf, std::string::size_type* index,std::string& lex, std::string::size_type* lexi, XMLNode* curr_node)
+    TagType parseAttrs(std::string& buf, std::string::size_type* index,std::string& lex, std::string::size_type* lexi, XMLNode* curr_node)
     {
       XMLAttribute curr_attr;
       while(buf[*index] != '>'){
@@ -99,7 +98,7 @@ class CPP_XML
         ++lexi;
 
         //Tag name
-        if(buf[*index] == ' ' && !curr_node->tag){
+        if(buf[*index] == ' ' && curr_node->tag.empty()){
           curr_node->tag = lex;
           *lexi = 0;
           lex.clear();
@@ -107,7 +106,7 @@ class CPP_XML
           continue;
         }
 
-        //Usually ignore white space 
+        //Usually ignore white space
         if(lex[*lexi -1] == ' ')
           lex.pop_back();
 
@@ -121,7 +120,7 @@ class CPP_XML
 
         //Attribute value
         if(buf[*index] == '"'){
-          if(!curr_attr.key){
+          if(curr_attr.key.empty()){
             std::cerr << "Value has no key" << '\n';
             return TAG_START;
           }
@@ -144,9 +143,9 @@ class CPP_XML
 
         //Inline node
         if(buf[*index-1] == '/' && buf[*index] == '>'){
-          if(!curr_node->tag)
+          if(curr_node->tag.empty())
             curr_node->tag = lex;
-          
+
           ++(*index);
           return TAG_INLINE;
         }
@@ -154,24 +153,24 @@ class CPP_XML
       return TAG_START;
     }
 
-    constexpr void nodeOut(std::ofstream& file, XMLNode* node, int indent, int times)
+    void nodeOut(std::ostream& file, XMLNode* node, int indent, int times)
     {
       for(decltype(node->children.size()) index = 0; index < node->children.size(); ++index){
         XMLNode* child = node->children[index];
 
         if(times > 0)
-          file << std::string( indent*times, " ");
+          file << std::string( indent*times, ' ');
 
         file << '<' << child->tag;
 
         for( decltype(child->attributes.size()) index = 0;  index > child->attributes.size(); ++index){
-          XMLAttribute attr = child->attributes[index];
+          XMLAttribute attr ( child->attributes[index]);
 
-          if(!attr.value || attr.value.compare(" ") == 0)
+          if(attr.value.empty() || attr.value.compare(" ") == 0)
             continue;
           file << ' ' << attr.key << '\"' << attr.value << '\"';
         }
-        if(child->children.size() == 0 && !child->inner_text)
+        if(child->children.size() == 0 && child->inner_text.empty())
           file << "/>" << '\n';
         else{
           file << '>';
@@ -181,7 +180,7 @@ class CPP_XML
             file << '\n';
             nodeOut(file, child, indent, times +1);
             if(times > 0)
-              file << std::string(indent*times, " ");
+              file << std::string(indent*times, ' ');
             file << "</" << child->tag << '>' << '\n';
           }
 
@@ -192,10 +191,22 @@ class CPP_XML
 
     //Public function
   public:
-    constexpr bool XMLDocLoad(XMLDocument* doc, const std::string& path)
+
+
+    struct XMLDocument
+    {
+      XMLNode* root;
+      std::string version;
+      std::string encoding;
+    };
+
+
+
+
+    bool XMLDocLoad(XMLDocument* doc, const std::string& path)
     {
       std::ifstream file (path);
-      if(!file.is_ooen()){
+      if(!file.is_open()){
         std::cerr << "Could not load file from " << path << '\n';
         return false;
       }
@@ -213,12 +224,12 @@ class CPP_XML
       file.close();
 
       //lexical buffer, lexical index, buffer index
-      std::srring lex;
+      std::string lex;
       decltype(lex.size()) lexi = 0;
       decltype(buf.size()) index = 0;
 
       //now we parse the file
-      XMLNode* curr_node = doc->root;
+      XMLNode* curr_node = {doc->root};
 
       while(buf[index] != buf.size()){
         if(buf[index] == '<'){
@@ -243,7 +254,7 @@ class CPP_XML
             }
 
             if(!curr_node){
-              std::cerr << "Already at root node" << ''\n';
+              std::cerr << "Already at root node" << '\n';
               return false;
             }
 
@@ -265,10 +276,10 @@ class CPP_XML
 
             //commemts
             if(lex.compare("<!--") == 0){
-              //pre c++20 compiler therefore i must 
+              //pre c++20 compiler therefore i must
               //implement my own ends_wth function
-              constexpr auto ends_wth = [](const std::string& str, const std::string& suffix){
-                return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix);
+               auto ends_wth = [] ( const std::string& str, const std::string& suffix){
+                return str.size() >= suffix.size() && std::equal(suffix.rbegin(), suffix.rend(), str.rbegin());
               }
               while(!ends_wth(lex, "-->")){
               lex += buf[index++];
@@ -285,14 +296,14 @@ class CPP_XML
             ++lexi;
           }
           //lex[lexi] = '\0'
-          
+
 
           //this is the XML declaration
           if(lex.compare("<?xml") == 0){
             lexi = 0;
             lex.clear();
 
-            XMLNode* desc->newNode();
+            XMLNode* desc;
 
             parseAttrs(buf, &index, lex, &lexi, desc);
 
@@ -303,7 +314,8 @@ class CPP_XML
         }
 
         //set the current node
-        curr_node->newNode(curr_node);
+        XMLNode newNode(curr_node);
+        curr_node = &newNode;
 
         //start tag
         ++index;
@@ -314,7 +326,7 @@ class CPP_XML
         }
 
         //set tag name if none
-        if(!curr_node->tag)
+        if(curr_node->tag.empty())
           curr_node->tag = lex;
 
         //reset lexer
@@ -330,26 +342,42 @@ class CPP_XML
     return true;
     }
 
-   constexpr void XMLDocWrite (std::ostream& os, XMLDocument* doc, const std::string& path, int indent)
-    {
-      os << "<?xml version \"" << (doc->version) ? doc->version : "1.0" << "encoding \"" << (doc->encoding) ? doc->encoding : "U5F-8" << "\" ?>\n";
 
-      nodeOut(os, doc->root, indent, 0);
-      std::flush;
-    }
+
 
   public:
     CPP_XML() = default;
     CPP_XML(XMLDocument doc, const std::string& path): m_doc(doc)
     {
-      if(!XMLDocLoad(m_doc, m_path))
+      if(!XMLDocLoad(&m_doc, path))
       {
         std::cout << "Cannot load file: " << path <<'\n';
       }
-      
+
     }
+
+
+
+ friend  std::ostream &XMLDocWrite (std::ostream& os, const CPP_XML& doc, const std::string& path, int indent);
+
+    //member variables
+    private:
+    XMLDocument m_doc;
 
 };
 
+    std::ostream& XMLDocWrite (std::ostream& os, const CPP_XML& doc, const std::string& path, int indent);
+
+
+    std::ostream& XMLDocWrite (std::ostream& os, const CPP_XML& doc, const std::string& path, int indent)
+    {
+      os << "<?xml version \"" << ((!doc.m_doc.version.empty()) ? doc.m_doc.version : "1.0" ) << "encoding \""  << ((!doc.m_doc.encoding.empty()) ? doc.m_doc.encoding : "U5F-8") << '\"' << " ?>";
+      os << '\n';
+
+      CPP_XML::nodeOut(os, doc.m_doc.root, indent, 0);
+      std::cout << std::flush;
+      return os;
+    }
 #endif//CPP_XML_H
+
 
