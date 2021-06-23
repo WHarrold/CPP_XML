@@ -280,7 +280,7 @@ class CPP_XML
               //implement my own ends_wth function
                auto ends_wth = [] ( const std::string& str, const std::string& suffix){
                 return str.size() >= suffix.size() && std::equal(suffix.rbegin(), suffix.rend(), str.rbegin());
-              }
+              };
               while(!ends_wth(lex, "-->")){
               lex += buf[index++];
               ++lexi;
