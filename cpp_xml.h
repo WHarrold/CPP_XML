@@ -153,7 +153,7 @@ class CPP_XML
       return TAG_START;
     }
 
-    void nodeOut(std::ostream& file, XMLNode* node, int indent, int times)
+  static void nodeOut(std::ostream& file, XMLNode* node, int indent, int times)
     {
       for(decltype(node->children.size()) index = 0; index < node->children.size(); ++index){
         XMLNode* child = node->children[index];
