@@ -11,6 +11,6 @@ int main ()
   CPP_XML xml;
   xml.XMLDocLoad(&doc, "sample.htmle" );
 
-  XMLDocWrite(std::cout, &doc, 0);
+  XMLDocWrite(std::cout, doc, 0);
   std::cout << std::flush;
 }

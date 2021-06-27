@@ -40,7 +40,7 @@ class CPP_XML
       std::vector<XMLAttribute> attributes;
       std::vector<XMLNode*> children;
       XMLNode() = default;
-      XMLNode(XMLNode& a_parent): parent(&a_parent)
+      XMLNode(XMLNode* a_parent): parent(a_parent)
               {
                 parent->children.push_back(this);
               }
